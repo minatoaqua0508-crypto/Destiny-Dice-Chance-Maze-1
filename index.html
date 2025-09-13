@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎲 命運骰子・機率迷宮</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(45deg, #ff6b6b, #ffd93d);
+            padding: 30px;
+            text-align: center;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.4);
+        }
+
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .game-area {
+            padding: 30px;
+            display: grid;
+            grid-template-columns: 1fr 350px;
+            gap: 30px;
+        }
+
+        .maze {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            grid-template-rows: repeat(4, 1fr);
+            gap: 10px;
+            aspect-ratio: 1;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .cell {
+            border: 3px solid #ddd;
+            border-radius: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 15px;
+            font-size: 14px;
+            font-weight: bold;
+            position: relative;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            min-height: 120px;
+        }
+
+        .cell:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+        }
+
+        .start {
+            background: linear-gradient(135deg, #4facfe, #00f2fe);
+            color: white;
+            border-color: #0080ff;
+            animation: pulse 2s infinite;
+        }
+
+        .goal {
+            background: linear-gradient(135deg, #fa709a, #fee140);
+            color: white;
+            border-color: #ff6b6b;
+            animation: sparkle 1.5s infinite alternate;
+        }
+
+        .path {
+            background: linear-gradient(135deg, #a8edea, #fed6e3);
+            border-color: #74b9ff;
+        }
+
+        .player {
+            background: linear-gradient(135deg, #fd79a8, #fdcb6e) !important;
+            border-color: #e17055 !important;
+            transform: scale(1.1);
+            box-shadow: 0 0 20px rgba(253, 121, 168, 0.6);
+            animation: playerGlow 1s infinite alternate;
+        }
+
+        .blocked {
+            background: linear-gradient(135deg, #b2bec3, #636e72);
+            color: white;
+            border-color: #636e72;
+        }
+
+        .event-info {
+            font-size: 12px;
+            margin-top: 8px;
+            padding: 5px;
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 8px;
+            line-height: 1.2;
+        }
+
+        .probability {
+            color: #e17055;
+            font-weight: bold;
+        }
+
+        .sidebar {
+            background: linear-gradient(135deg, #f8f9ff, #e8eaf6);
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .dice-container {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .dice {
+            width: 80px;
+            height: 80px;
+            background: white;
+            border: 3px solid #74b9ff;
+            border-radius: 15px;
+            font-size: 36px;
+            font-weight: bold;
+            color: #2d3436;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 20px auto;
+            box-shadow: 0 5px 15px rgba(116, 185, 255, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .dice.rolling {
+            animation: diceRoll 1s ease-in-out;
+        }
+
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .btn {
+            padding: 15px 25px;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #74b9ff, #0984e3);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #fd79a8, #fdcb6e);
+            color: white;
+        }
+
+        .stats {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .stats h3 {
+            color: #2d3436;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            padding: 8px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .message {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+            min-height: 120px;
+        }
+
+        .message h4 {
+            color: #2d3436;
+            margin-bottom: 10px;
+        }
+
+        .success {
+            border-left: 5px solid #00b894;
+        }
+
+        .fail {
+            border-left: 5px solid #e17055;
+        }
+
+        .info {
+            border-left: 5px solid #74b9ff;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        @keyframes sparkle {
+            0% { filter: brightness(1); }
+            100% { filter: brightness(1.3); }
+        }
+
+        @keyframes playerGlow {
+            0% { box-shadow: 0 0 20px rgba(253, 121, 168, 0.6); }
+            100% { box-shadow: 0 0 30px rgba(253, 121, 168, 0.9); }
+        }
+
+        @keyframes diceRoll {
+            0% { transform: rotateY(0deg) rotateX(0deg); }
+            25% { transform: rotateY(90deg) rotateX(90deg); }
+            50% { transform: rotateY(180deg) rotateX(180deg); }
+            75% { transform: rotateY(270deg) rotateX(270deg); }
+            100% { transform: rotateY(360deg) rotateX(360deg); }
+        }
+
+        .math-formula {
+            background: #f8f9ff;
+            border: 2px solid #74b9ff;
+            border-radius: 8px;
+            padding: 10px;
+            margin: 10px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            text-align: center;
+        }
+
+        @media (max-width: 768px) {
+            .game-area {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+            
+            .cell {
+                min-height: 80px;
+                padding: 8px;
+                font-size: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>🎲 命運骰子・機率迷宮</h1>
+            <p>透過骰子與機率統計，探索數學的奧秘！</p>
+        </header>
+
+        <div class="game-area">
+            <div class="maze-section">
+                <div class="maze" id="maze"></div>
+            </div>
+
+            <div class="sidebar">
+                <div class="dice-container">
+                    <h3>🎲 命運骰子</h3>
+                    <div class="dice" id="dice">?</div>
+                    <div class="controls">
+                        <button class="btn btn-primary" onclick="rollDice()">擲骰子</button>
+                        <button class="btn btn-secondary" onclick="resetGame()">重新開始</button>
+                    </div>
+                </div>
+
+                <div class="stats">
+                    <h3>📊 遊戲統計</h3>
+                    <div class="stat-item">
+                        <span>目前位置:</span>
+                        <span id="position">(0, 3)</span>
+                    </div>
+                    <div class="stat-item">
+                        <span>移動次數:</span>
+                        <span id="moves">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span>成功率:</span>
+                        <span id="successRate">0%</span>
+                    </div>
+                </div>
+
+                <div class="message info" id="message">
+                    <h4>🎮 遊戲說明</h4>
+                    <p>歡迎來到機率迷宮！點擊相鄰的格子選擇路徑，每條路徑都有不同的事件條件。擲骰子符合條件就能前進，目標是到達右上角的終點！</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 遊戲狀態
+        let gameState = {
+            playerPos: { x: 0, y: 3 },
+            goalPos: { x: 3, y: 0 },
+            currentDice: null,
+            selectedPath: null,
+            moves: 0,
+            successes: 0,
+            isRolling: false
+        };
+
+        // 迷宮事件配置
+        const mazeEvents = {
+            '0,2': { condition: '偶數', set: [2, 4, 6], prob: 0.5, desc: '偶數 = {2,4,6}' },
+            '0,1': { condition: '≥4', set: [4, 5, 6], prob: 0.5, desc: '≥4 = {4,5,6}' },
+            '1,3': { condition: '≤3', set: [1, 2, 3], prob: 0.5, desc: '≤3 = {1,2,3}' },
+            '1,2': { condition: '奇數或≥5', set: [1, 3, 5, 6], prob: 0.67, desc: '{1,3,5} ∪ {5,6} = {1,3,5,6}' },
+            '1,1': { condition: '不是1', set: [2, 3, 4, 5, 6], prob: 0.83, desc: '補集 = {2,3,4,5,6}' },
+            '1,0': { condition: '偶數且≥4', set: [4, 6], prob: 0.33, desc: '{2,4,6} ∩ {4,5,6} = {4,6}' },
+            '2,3': { condition: '質數', set: [2, 3, 5], prob: 0.5, desc: '質數 = {2,3,5}' },
+            '2,2': { condition: '≤4', set: [1, 2, 3, 4], prob: 0.67, desc: '≤4 = {1,2,3,4}' },
+            '2,1': { condition: '3的倍數', set: [3, 6], prob: 0.33, desc: '3的倍數 = {3,6}' },
+            '3,3': { condition: '≥3', set: [3, 4, 5, 6], prob: 0.67, desc: '≥3 = {3,4,5,6}' },
+            '3,2': { condition: '偶數或1', set: [1, 2, 4, 6], prob: 0.67, desc: '{2,4,6} ∪ {1} = {1,2,4,6}' },
+            '3,1': { condition: '≥5', set: [5, 6], prob: 0.33, desc: '≥5 = {5,6}' }
+        };
+
+        // 初始化遊戲
+        function initGame() {
+            const maze = document.getElementById('maze');
+            maze.innerHTML = '';
+
+            for (let y = 0; y < 4; y++) {
+                for (let x = 0; x < 4; x++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    cell.id = `cell-${x}-${y}`;
+                    cell.onclick = () => selectPath(x, y);
+
+                    if (x === 0 && y === 3) {
+                        cell.className += ' start player';
+                        cell.innerHTML = `<div style="font-size: 24px;">🚀</div><div>起點</div>`;
+                    } else if (x === 3 && y === 0) {
+                        cell.className += ' goal';
+                        cell.innerHTML = `<div style="font-size: 24px;">🏆</div><div>終點</div>`;
+                    } else {
+                        const key = `${x},${y}`;
+                        const event = mazeEvents[key];
+                        if (event) {
+                            cell.className += ' path';
+                            cell.innerHTML = `
+                                <div style="font-size: 18px;">⚡</div>
+                                <div class="event-info">
+                                    <div><strong>${event.condition}</strong></div>
+                                    <div class="probability">P = ${(event.prob * 100).toFixed(0)}%</div>
+                                    <div style="font-size: 10px;">${event.desc}</div>
+                                </div>
+                            `;
+                        } else {
+                            cell.className += ' blocked';
+                            cell.innerHTML = `<div style="font-size: 18px;">🚫</div><div>封鎖</div>`;
+                        }
+                    }
+
+                    maze.appendChild(cell);
+                }
+            }
+
+            updateStats();
+            updateMessage('🎮 遊戲說明', '歡迎來到機率迷宮！點擊相鄰的格子選擇路徑，每條路徑都有不同的事件條件。擲骰子符合條件就能前進，目標是到達右上角的終點！', 'info');
+        }
+
+        // 選擇路徑
+        function selectPath(x, y) {
+            if (gameState.isRolling) return;
+
+            const dx = Math.abs(x - gameState.playerPos.x);
+            const dy = Math.abs(y - gameState.playerPos.y);
+
+            // 檢查是否為相鄰格子
+            if ((dx === 1 && dy === 0) || (dx === 0 && dy === 1)) {
+                if (x === 3 && y === 0) {
+                    // 到達終點
+                    updateMessage('🎉 恭喜！', '你成功到達終點！數學與運氣的完美結合！', 'success');
+                    return;
+                }
+
+                const key = `${x},${y}`;
+                const event = mazeEvents[key];
+                
+                if (event) {
+                    gameState.selectedPath = { x, y, event };
+                    updateMessage('📍 路徑選擇', `你選擇了條件「${event.condition}」的路徑。<div class="math-formula">樣本空間 S = {1,2,3,4,5,6}<br>事件 E = ${JSON.stringify(event.set)}<br>P(E) = ${event.set.length}/6 = ${(event.prob * 100).toFixed(0)}%</div>現在擲骰子試試運氣吧！`, 'info');
+                } else {
+                    updateMessage('🚫 無法通行', '這條路徑被封鎖了，請選擇其他路線！', 'fail');
+                }
+            } else {
+                updateMessage('⚠️ 移動限制', '你只能移動到相鄰的格子！', 'info');
+            }
+        }
+
+        // 擲骰子
+        function rollDice() {
+            if (!gameState.selectedPath || gameState.isRolling) {
+                updateMessage('⚠️ 提醒', '請先選擇一條路徑！', 'info');
+                return;
+            }
+
+            gameState.isRolling = true;
+            const dice = document.getElementById('dice');
+            dice.classList.add('rolling');
+            dice.textContent = '🎲';
+
+            setTimeout(() => {
+                const result = Math.floor(Math.random() * 6) + 1;
+                gameState.currentDice = result;
+                dice.textContent = result;
+                dice.classList.remove('rolling');
+                gameState.isRolling = false;
+
+                checkResult(result);
+            }, 1000);
+        }
+
+        // 檢查結果
+        function checkResult(diceResult) {
+            const { event } = gameState.selectedPath;
+            const success = event.set.includes(diceResult);
+
+            gameState.moves++;
+            if (success) {
+                gameState.successes++;
+                movePlayer();
+                updateMessage('✅ 成功！', `骰子顯示 ${diceResult}，符合條件「${event.condition}」！你可以前進了。<div class="math-formula">骰子結果 = ${diceResult}<br>事件集合 = ${JSON.stringify(event.set)}<br>${diceResult} ∈ ${JSON.stringify(event.set)} ？ 是！</div>`, 'success');
+            } else {
+                updateMessage('❌ 失敗', `骰子顯示 ${diceResult}，不符合條件「${event.condition}」。請重新選擇路徑。<div class="math-formula">骰子結果 = ${diceResult}<br>事件集合 = ${JSON.stringify(event.set)}<br>${diceResult} ∈ ${JSON.stringify(event.set)} ？ 否！</div>`, 'fail');
+            }
+
+            gameState.selectedPath = null;
+            updateStats();
+        }
+
+        // 移動玩家
+        function movePlayer() {
+            // 移除舊位置的玩家標記
+            const oldCell = document.getElementById(`cell-${gameState.playerPos.x}-${gameState.playerPos.y}`);
+            oldCell.classList.remove('player');
+
+            // 更新位置
+            gameState.playerPos = { x: gameState.selectedPath.x, y: gameState.selectedPath.y };
+
+            // 添加新位置的玩家標記
+            const newCell = document.getElementById(`cell-${gameState.playerPos.x}-${gameState.playerPos.y}`);
+            newCell.classList.add('player');
+
+            // 檢查是否到達終點
+            if (gameState.playerPos.x === 3 && gameState.playerPos.y === 0) {
+                setTimeout(() => {
+                    updateMessage('🎉 勝利！', `恭喜你成功通過機率迷宮！<br>總移動次數：${gameState.moves}<br>成功率：${((gameState.successes / gameState.moves) * 100).toFixed(1)}%<br><br>你已經掌握了樣本空間、事件、機率計算等重要概念！`, 'success');
+                }, 500);
+            }
+        }
+
+        // 更新統計
+        function updateStats() {
+            document.getElementById('position').textContent = `(${gameState.playerPos.x}, ${gameState.playerPos.y})`;
+            document.getElementById('moves').textContent = gameState.moves;
+            const rate = gameState.moves > 0 ? ((gameState.successes / gameState.moves) * 100).toFixed(1) : 0;
+            document.getElementById('successRate').textContent = `${rate}%`;
+        }
+
+        // 更新訊息
+        function updateMessage(title, content, type) {
+            const message = document.getElementById('message');
+            message.className = `message ${type}`;
+            message.innerHTML = `<h4>${title}</h4><p>${content}</p>`;
+        }
+
+        // 重置遊戲
+        function resetGame() {
+            gameState = {
+                playerPos: { x: 0, y: 3 },
+                goalPos: { x: 3, y: 0 },
+                currentDice: null,
+                selectedPath: null,
+                moves: 0,
+                successes: 0,
+                isRolling: false
+            };
+
+            document.getElementById('dice').textContent = '?';
+            initGame();
+        }
+
+        // 啟動遊戲
+        initGame();
+    </script>
+</body>
+</html>
